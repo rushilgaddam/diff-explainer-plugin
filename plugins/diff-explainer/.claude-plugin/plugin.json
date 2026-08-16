@@ -1,6 +1,6 @@
 {
   "name": "diff-explainer",
-  "description": "Opens a small popup explaining each file change Claude Code makes, with a chat box for follow-up questions",
+  "description": "Run /diff-explainer:explain to open a popup explaining Claude Code's most recent file change, with a chat box for follow-up questions",
   "version": "1.0.0",
   "author": {
     "name": "Your Name"

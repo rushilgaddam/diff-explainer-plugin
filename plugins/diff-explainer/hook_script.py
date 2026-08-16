@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""PostToolUse hook: builds a diff for the edit that just happened and hands
-it off to a detached popup process, without blocking Claude Code."""
+"""PostToolUse hook: builds a diff for the edit that just happened and
+records it to disk for later review. Does NOT open the popup itself — the
+popup only opens when the user runs the /diff-explainer:explain command.
+This keeps the hook a fast, synchronous file write with no subprocess
+spawn, so it never blocks Claude Code."""
 
 import difflib
 import json
 import os
-import subprocess
 import sys
-import tempfile
+
+STATE_FILE = os.path.expanduser("~/.claude-diff-explainer/latest.json")
 
 
 def build_diff_for_edit(tool_input):
@@ -67,8 +70,9 @@ def main():
     if not diff or not diff.strip():
         return
 
-    fd, temp_path = tempfile.mkstemp(prefix="diff-explainer-", suffix=".json")
-    with os.fdopen(fd, "w") as f:
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+    tmp_path = STATE_FILE + ".tmp"
+    with open(tmp_path, "w") as f:
         json.dump(
             {
                 "file_path": file_path,
@@ -79,17 +83,7 @@ def main():
             },
             f,
         )
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    popup_script = os.path.join(script_dir, "popup_app.py")
-
-    subprocess.Popen(
-        [sys.executable, popup_script, temp_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        stdin=subprocess.DEVNULL,
-        start_new_session=True,
-    )
+    os.replace(tmp_path, STATE_FILE)
 
 
 if __name__ == "__main__":

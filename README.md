@@ -1,27 +1,38 @@
 # diff-explainer
 
-A Claude Code plugin that pops up a small dark-themed chat window every time
-Claude Code edits or creates a file, explains the change in plain language,
-and lets you ask follow-up questions — all without blocking or touching your
-main Claude Code session.
+A Claude Code plugin that explains file changes in a small dark-themed chat
+popup, on demand, and lets you ask follow-up questions — all without
+blocking or touching your main Claude Code session.
+
+The popup does **not** appear automatically on every edit. It opens only
+when you explicitly run `/diff-explainer:explain`, showing the most recent
+change Claude Code made.
 
 ## How it works
 
 1. Claude Code fires the `PostToolUse` hook after every `Edit`, `Write`, or
    `MultiEdit` call.
 2. `hook_script.py` reads the tool call off stdin, builds a unified diff
-   (or grabs the raw content for a fresh `Write`), writes it to a temp file,
-   and spawns `popup_app.py` as a fully detached background process. The
-   hook then exits immediately — it never blocks the main session.
-3. `popup_app.py` reads the temp file, opens a small `pywebview` window
+   (or grabs the raw content for a fresh `Write`), and writes it to
+   `~/.claude-diff-explainer/latest.json`, overwriting whatever was there
+   before. That's it — no window opens, no process is spawned. This keeps
+   the hook a fast, synchronous file write that never blocks Claude Code.
+3. When you want to see it, run `/diff-explainer:explain` in your Claude
+   Code session. That's a plugin skill/command
+   (`plugins/diff-explainer/skills/explain/SKILL.md`) which runs
+   `show_popup.py`.
+4. `show_popup.py` reads `latest.json`, copies it to a temp file, and spawns
+   `popup_app.py` as a fully detached background process.
+5. `popup_app.py` reads the temp file, opens a small `pywebview` window
    (`ui.html`), and makes its own, separate call to the Anthropic API to
    generate the initial explanation.
-4. The popup's chat box lets you keep asking follow-up questions; each one
+6. The popup's chat box lets you keep asking follow-up questions; each one
    is a fresh API call scoped to that popup's own conversation.
 
 Because the popup is a separate OS process from Claude Code, closing it,
 crashing it, or leaving it open indefinitely has no effect on your Claude
-Code session.
+Code session. And because opening it is a manual action, it never
+interrupts your flow while Claude is working.
 
 ## Setup
 
@@ -41,8 +52,9 @@ Code session.
    /plugin install diff-explainer@diff-explainer-tools
    ```
 
-3. Edit or create a file with Claude Code as usual. A popup window should
-   appear explaining the change within a few seconds.
+3. Edit or create a file with Claude Code as usual, then run
+   `/diff-explainer:explain` whenever you want to see it explained. A popup
+   window opens showing the explanation and a chat box for follow-ups.
 
 Dependencies (`pywebview`, `anthropic`) are installed automatically on
 first run via `pip install --user`, so there's no manual `pip install`
@@ -100,8 +112,12 @@ claude plugin validate .
 
 - No fixed window placement — the popup opens wherever your OS/window
   manager decides.
-- No debouncing — several rapid-fire edits (e.g. from a `MultiEdit`-heavy
-  refactor) will spawn multiple popups at once.
+- Only the single most recent change is tracked — if you make several
+  edits before running `/diff-explainer:explain`, only the last one is
+  shown; earlier ones are silently overwritten in `latest.json`.
+- The state file (`~/.claude-diff-explainer/latest.json`) isn't scoped per
+  project or session — it's overwritten globally by whichever Claude Code
+  session edited a file most recently.
 - Conversations aren't persisted — once you close a popup, that chat
   history is gone.
 - Very large `Write` contents are sent to the model uncapped, which can

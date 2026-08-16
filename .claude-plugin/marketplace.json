@@ -3,12 +3,12 @@
   "owner": {
     "name": "Your Name"
   },
-  "description": "A popup that explains every Claude Code edit and lets you ask follow-up questions",
+  "description": "An on-demand popup that explains Claude Code's file changes and lets you ask follow-up questions",
   "plugins": [
     {
       "name": "diff-explainer",
       "source": "./plugins/diff-explainer",
-      "description": "Opens a small window explaining each file change Claude Code makes, with a chat box for follow-ups"
+      "description": "Run /diff-explainer:explain to open a window explaining Claude Code's most recent file change, with a chat box for follow-ups"
     }
   ]
 }
