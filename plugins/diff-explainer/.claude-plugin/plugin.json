@@ -1,0 +1,21 @@
+{
+  "name": "diff-explainer",
+  "description": "Opens a small popup explaining each file change Claude Code makes, with a chat box for follow-up questions",
+  "version": "1.0.0",
+  "author": {
+    "name": "Your Name"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hook_script.py"
+          }
+        ]
+      }
+    ]
+  }
+}

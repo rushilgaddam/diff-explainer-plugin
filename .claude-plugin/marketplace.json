@@ -1,0 +1,14 @@
+{
+  "name": "diff-explainer-tools",
+  "owner": {
+    "name": "Your Name"
+  },
+  "description": "A popup that explains every Claude Code edit and lets you ask follow-up questions",
+  "plugins": [
+    {
+      "name": "diff-explainer",
+      "source": "./plugins/diff-explainer",
+      "description": "Opens a small window explaining each file change Claude Code makes, with a chat box for follow-ups"
+    }
+  ]
+}

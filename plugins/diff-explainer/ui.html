@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Diff Explainer</title>
+<style>
+  :root {
+    --bg: #1e1f22;
+    --panel: #26282b;
+    --panel-2: #2c2e32;
+    --border: #34363a;
+    --text: #e4e6eb;
+    --text-dim: #9a9ca3;
+    --accent: #7aa2f7;
+    --accent-dim: #4c5f8f;
+    --user-bubble: #34405c;
+    --assistant-bubble: #2c2e32;
+    --kind-edit: #7aa2f7;
+    --kind-write: #9ece6a;
+    --kind-multi_edit: #e0af68;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  header {
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    -webkit-app-region: drag;
+  }
+
+  #file-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #file-path-full {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #kind-badge {
+    display: inline-block;
+    align-self: flex-start;
+    margin-top: 2px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    background: rgba(122, 162, 247, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(122, 162, 247, 0.3);
+  }
+
+  #kind-badge.write {
+    background: rgba(158, 206, 106, 0.15);
+    color: var(--kind-write);
+    border-color: rgba(158, 206, 106, 0.3);
+  }
+
+  #kind-badge.multi_edit {
+    background: rgba(224, 175, 104, 0.15);
+    color: var(--kind-multi_edit);
+    border-color: rgba(224, 175, 104, 0.3);
+  }
+
+  #messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #messages::-webkit-scrollbar {
+    width: 8px;
+  }
+  #messages::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  #messages::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .row {
+    display: flex;
+    width: 100%;
+  }
+  .row.user { justify-content: flex-end; }
+  .row.assistant { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 82%;
+    padding: 9px 12px;
+    border-radius: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 13.5px;
+  }
+
+  .row.assistant .bubble {
+    background: var(--assistant-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 3px;
+    color: var(--text);
+  }
+
+  .row.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid var(--accent-dim);
+    border-bottom-right-radius: 3px;
+    color: var(--text);
+  }
+
+  .thinking .bubble {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    animation: pulse 1.2s infinite ease-in-out;
+  }
+  .dot:nth-child(2) { animation-delay: 0.15s; }
+  .dot:nth-child(3) { animation-delay: 0.3s; }
+
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  footer {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+
+  #input {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  #input:focus {
+    border-color: var(--accent-dim);
+  }
+
+  #input::placeholder {
+    color: var(--text-dim);
+  }
+
+  #input:disabled {
+    opacity: 0.6;
+  }
+
+  #ask-btn {
+    background: var(--accent);
+    color: #16171a;
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  #ask-btn:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+
+  #ask-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div id="file-name">Loading…</div>
+    <div id="file-path-full"></div>
+    <span id="kind-badge"></span>
+  </header>
+
+  <div id="messages"></div>
+
+  <footer>
+    <input id="input" type="text" placeholder="Ask a follow-up…" disabled />
+    <button id="ask-btn" disabled>Ask</button>
+  </footer>
+</div>
+
+<script>
+  const messagesEl = document.getElementById("messages");
+  const inputEl = document.getElementById("input");
+  const askBtn = document.getElementById("ask-btn");
+  const fileNameEl = document.getElementById("file-name");
+  const filePathFullEl = document.getElementById("file-path-full");
+  const kindBadgeEl = document.getElementById("kind-badge");
+
+  function basename(path) {
+    if (!path) return "file";
+    const parts = path.split("/");
+    return parts[parts.length - 1] || path;
+  }
+
+  function kindLabel(kind) {
+    if (kind === "multi_edit") return "multi-edit";
+    if (kind === "write") return "new file";
+    return "edit";
+  }
+
+  function addMessage(role, text) {
+    const row = document.createElement("div");
+    row.className = "row " + role;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function addThinking() {
+    const row = document.createElement("div");
+    row.className = "row assistant thinking";
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setBusy(busy) {
+    inputEl.disabled = busy;
+    askBtn.disabled = busy;
+    if (!busy) inputEl.focus();
+  }
+
+  async function loadMeta() {
+    try {
+      const meta = await window.pywebview.api.get_meta();
+      fileNameEl.textContent = basename(meta.file_path);
+      filePathFullEl.textContent = meta.file_path || "";
+      kindBadgeEl.textContent = kindLabel(meta.kind);
+      kindBadgeEl.className = meta.kind || "";
+    } catch (e) {
+      fileNameEl.textContent = "Diff Explainer";
+    }
+  }
+
+  async function loadInitialExplanation() {
+    const thinkingRow = addThinking();
+    setBusy(true);
+    try {
+      const reply = await window.pywebview.api.get_initial_explanation();
+      thinkingRow.remove();
+      addMessage("assistant", reply);
+    } catch (e) {
+      thinkingRow.remove();
+      addMessage("assistant", "(something went wrong loading the explanation)");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = "";
+    addMessage("user", text);
+    const thinkingRow = addThinking();
+    setBusy(true);
+    try {
+      const reply = await window.pywebview.api.send_message(text);
+      thinkingRow.remove();
+      addMessage("assistant", reply);
+    } catch (e) {
+      thinkingRow.remove();
+      addMessage("assistant", "(something went wrong sending that)");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  askBtn.addEventListener("click", sendMessage);
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+
+  window.addEventListener("pywebviewready", async () => {
+    await loadMeta();
+    await loadInitialExplanation();
+  });
+</script>
+</body>
+</html>
